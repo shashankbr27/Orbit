@@ -1,0 +1,40 @@
+# Render blueprint for ORBIT.
+#
+# One web service, no database, no add-ons: every universe lives in the
+# visitor's own browser (IndexedDB), so there is nothing server-side to
+# provision and nothing to back up.
+#
+# To deploy: push this repo, then in Render choose "New → Blueprint" and point
+# it at the repository. Render reads this file and creates the service.
+services:
+  - type: web
+    name: orbit
+    runtime: node
+    plan: starter
+    region: singapore
+    branch: main
+    # `npm ci` needs the lockfile, which is committed.
+    buildCommand: npm ci && npm run build
+    # `next start` reads $PORT, which Render sets. Note that NODE_ENV is
+    # deliberately not set here: some npm versions read it as `--omit=dev`,
+    # which would strip TypeScript and Tailwind and break the build. Next sets
+    # its own production mode from `next build` regardless.
+    startCommand: npm run start
+    healthCheckPath: /
+    autoDeployTrigger: commit
+    envVars:
+      # Track the latest Node 22 LTS rather than pinning a patch release.
+      - key: NODE_VERSION
+        value: '22'
+      # Next.js writes its telemetry prompt on first build; silence it.
+      - key: NEXT_TELEMETRY_DISABLED
+        value: '1'
+    headers:
+      # The service worker must never be served stale, or a deploy can be
+      # invisible to anyone who already has the app installed.
+      - path: /sw.js
+        name: Cache-Control
+        value: no-cache, no-store, must-revalidate
+      - path: /manifest.webmanifest
+        name: Cache-Control
+        value: public, max-age=3600

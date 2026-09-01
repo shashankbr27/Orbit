@@ -1,0 +1,346 @@
+@import 'tailwindcss';
+
+/* ──────────────────────────────────────────────────────────────────────────
+   ORBIT design tokens
+
+   The palette is deliberately narrow: near-black grounds, one accent that the
+   active universe's theme drives, and a lot of restraint. Everything else is
+   carried by light, blur and typography.
+   ────────────────────────────────────────────────────────────────────────── */
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-display), ui-serif, Georgia, serif;
+  --font-hand: var(--font-hand), 'Segoe Script', cursive;
+
+  --color-void: #04050a;
+  --color-ink: #f4f6fb;
+  --color-mute: #9aa3b8;
+  --color-faint: #5c6478;
+
+  --color-glass: color-mix(in oklab, #0a0d18 78%, transparent);
+  --color-hairline: color-mix(in oklab, #ffffff 10%, transparent);
+
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-glide: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root {
+  /* Overwritten at runtime from the active universe theme. */
+  --accent: #8fb4ff;
+  --accent-soft: color-mix(in oklab, var(--accent) 22%, transparent);
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  color-scheme: dark;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: #04050a;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  /* The universe owns the viewport: no page scroll, no rubber-band. */
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
+/* Let panels scroll internally without ever scrolling the page. */
+.scroll-y {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scroll-y::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.scroll-y::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}
+.scroll-y::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--accent) 40%, transparent);
+  color: #fff;
+}
+
+/* ── building blocks ─────────────────────────────────────────────────────── */
+
+@utility glass {
+  background: linear-gradient(
+    to bottom,
+    color-mix(in oklab, #10141f 74%, transparent),
+    color-mix(in oklab, #070a12 82%, transparent)
+  );
+  backdrop-filter: blur(22px) saturate(1.25);
+  -webkit-backdrop-filter: blur(22px) saturate(1.25);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.06) inset,
+    0 24px 60px -24px rgba(0, 0, 0, 0.85);
+}
+
+@utility glass-soft {
+  background: color-mix(in oklab, #0a0e18 58%, transparent);
+  backdrop-filter: blur(16px) saturate(1.2);
+  -webkit-backdrop-filter: blur(16px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+/* Small caps label — used for every piece of chrome in the app. */
+@utility eyebrow {
+  font-size: 10px;
+  line-height: 1;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 500;
+  color: var(--color-faint);
+}
+
+@utility no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* A very fine film grain for HTML surfaces, matching the canvas grain.
+ *
+ * Deliberately sets no `position`: Tailwind emits custom utilities after the
+ * built-ins, so a `position: relative` here would beat `fixed` on the same
+ * element and quietly drop every bottom sheet to the top of the page. Parents
+ * that are not already positioned add `relative` themselves. */
+@utility grain {
+  isolation: isolate;
+}
+@utility grain-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ── animation ───────────────────────────────────────────────────────────── */
+
+@keyframes orbit-fade-up {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 10px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes orbit-breathe {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@keyframes orbit-drift {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -6px, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.anim-fade-up {
+  animation: orbit-fade-up 0.7s var(--ease-glide) both;
+}
+.anim-breathe {
+  animation: orbit-breathe 4.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .anim-fade-up,
+  .anim-breathe {
+    animation: none !important;
+  }
+  * {
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── object labels (DOM overlay above the canvas) ────────────────────────── */
+
+.orbit-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  will-change: transform, opacity;
+  white-space: nowrap;
+  /* A name is an anchor, not a paragraph: clip rather than wrap or collide. */
+  max-width: min(62vw, 300px);
+  transform-origin: 50% 0%;
+  text-shadow:
+    0 1px 12px rgba(0, 0, 0, 0.9),
+    0 0 3px rgba(0, 0, 0, 0.8);
+}
+
+.orbit-label__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  font-weight: 450;
+  color: rgba(238, 242, 252, 0.92);
+}
+
+.orbit-label__meta {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 9.5px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(154, 163, 184, 0.72);
+  margin-top: 2px;
+}
+
+.orbit-note-body {
+  margin-top: 0;
+  font-family: var(--font-hand);
+  color: #2b2a26;
+  line-height: 1.35;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 9;
+  -webkit-box-orient: vertical;
+  text-shadow: none;
+}
+
+.orbit-label--major .orbit-label__title {
+  font-family: var(--font-display);
+  font-size: 17px;
+  letter-spacing: 0.01em;
+}
+
+/* A big canvas needs slightly bigger type or the names get lost in it. */
+@media (min-width: 1024px) {
+  .orbit-label {
+    max-width: min(40vw, 340px);
+  }
+  .orbit-label__title {
+    font-size: 13.5px;
+  }
+  .orbit-label__meta {
+    font-size: 10px;
+  }
+  .orbit-label--major .orbit-label__title {
+    font-size: 21px;
+  }
+}
+
+/* ── inputs ──────────────────────────────────────────────────────────────── */
+
+input,
+textarea,
+select,
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* Chrome paints `buttonface` grey behind an unstyled button, which shows up as
+   a mystery rectangle behind transparent chrome. Reset it once, here. */
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+button:disabled {
+  cursor: default;
+}
+
+input[type='text'],
+input[type='date'],
+input[type='url'],
+textarea {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 9px 11px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  width: 100%;
+}
+
+input[type='text']:focus,
+input[type='date']:focus,
+input[type='url']:focus,
+textarea:focus {
+  border-color: color-mix(in oklab, var(--accent) 55%, transparent);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  background: transparent;
+}
+input[type='range']::-webkit-slider-runnable-track {
+  height: 2px;
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 2px;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -6px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px color-mix(in oklab, var(--accent) 18%, transparent);
+}
+input[type='range']::-moz-range-track {
+  height: 2px;
+  background: rgba(255, 255, 255, 0.16);
+}
+input[type='range']::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: none;
+  border-radius: 50%;
+  background: var(--accent);
+}

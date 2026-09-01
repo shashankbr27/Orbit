@@ -1,0 +1,10 @@
+# Normalise line endings: this repo is authored on Windows and deployed on
+# Linux, and a mixed tree makes every diff unreadable.
+* text=auto eol=lf
+
+# Generated icons are binary.
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff binary
+*.woff2 binary
