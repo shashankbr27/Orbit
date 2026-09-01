@@ -6,6 +6,10 @@
 #
 # To deploy: push this repo, then in Render choose "New → Blueprint" and point
 # it at the repository. Render reads this file and creates the service.
+#
+# Note: Render's `headers` field is only valid for static sites, so the
+# service-worker and manifest cache policy lives in `next.config.ts` instead —
+# which also keeps it identical on Vercel and in local production runs.
 services:
   - type: web
     name: orbit
@@ -29,12 +33,3 @@ services:
       # Next.js writes its telemetry prompt on first build; silence it.
       - key: NEXT_TELEMETRY_DISABLED
         value: '1'
-    headers:
-      # The service worker must never be served stale, or a deploy can be
-      # invisible to anyone who already has the app installed.
-      - path: /sw.js
-        name: Cache-Control
-        value: no-cache, no-store, must-revalidate
-      - path: /manifest.webmanifest
-        name: Cache-Control
-        value: public, max-age=3600
