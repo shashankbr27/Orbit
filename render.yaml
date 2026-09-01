@@ -14,7 +14,10 @@ services:
   - type: web
     name: orbit
     runtime: node
-    plan: starter
+    # Free instances need no payment method. They spin down after ~15
+    # minutes idle, so the first visit after a quiet spell waits for a cold
+    # start; switch to `starter` to stop that if the link gets real use.
+    plan: free
     region: singapore
     branch: main
     # `npm ci` needs the lockfile, which is committed.
