@@ -11,7 +11,6 @@ import {
   type ScrapbookPage,
 } from '@/data/model';
 import { importImageFile } from '@/data/images';
-import { hashN } from '@/engine/math';
 import {
   IconBack,
   IconBrush,
@@ -139,6 +138,8 @@ export function Scrapbook({
 }) {
   const open = !!object;
   const [page, setPage] = useState<ScrapbookPage>(EMPTY_PAGE);
+  /** The authoritative page, readable synchronously between renders. */
+  const live = useRef<ScrapbookPage>(EMPTY_PAGE);
   const [selected, setSelected] = useState<string | null>(null);
   const [tool, setTool] = useState<Tool>('select');
   const [styleOpen, setStyleOpen] = useState(false);
@@ -149,76 +150,88 @@ export function Scrapbook({
   const fileInput = useRef<HTMLInputElement>(null);
   const phone = useIsPhone();
 
-  // Load the memory's page when it opens.
+  /**
+   * While the scrapbook is open it owns the page; the store is a mirror.
+   *
+   * Re-seeding from `object.scrapbook` on every change would be a loop: each
+   * edit saves, the store hands back a new object, and the page (and the
+   * selection with it) resets — so a just-placed item could never be resized,
+   * rotated or deleted. Load once per memory instead.
+   */
+  const loadedFor = useRef<string | null>(null);
   useEffect(() => {
-    if (!object) return;
-    setPage(
+    if (!object) {
+      loadedFor.current = null;
+      return;
+    }
+    if (loadedFor.current === object.id) return;
+    loadedFor.current = object.id;
+    const loaded =
       object.scrapbook ?? {
-        style: 'paper',
+        style: 'paper' as ScrapStyle,
         items: [],
         heading: object.title,
         updatedAt: Date.now(),
-      },
-    );
+      };
+    setPage(loaded);
+    live.current = loaded;
     setSelected(null);
     setTool('select');
     history.current = [];
-  }, [object?.id, object?.scrapbook, object?.title, object]);
+  }, [object]);
 
   const style = STYLES[page.style] ?? STYLES.paper;
 
-  const commit = useCallback(
-    (next: ScrapbookPage, remember = true) => {
+  const apply = useCallback(
+    (next: ScrapbookPage, opts: { remember?: boolean; save?: boolean } = {}) => {
+      const { remember = true, save = true } = opts;
       if (remember) {
-        history.current.push(page.items);
+        history.current.push(live.current.items);
         if (history.current.length > 24) history.current.shift();
       }
-      const withTime = { ...next, updatedAt: Date.now() };
-      setPage(withTime);
-      onSave(withTime);
-    },
-    [onSave, page.items],
-  );
-
-  const patchItems = useCallback(
-    (fn: (items: ScrapItem[]) => ScrapItem[], remember = true) => {
-      setPage((prev) => {
-        if (remember) {
-          history.current.push(prev.items);
-          if (history.current.length > 24) history.current.shift();
-        }
-        const next = { ...prev, items: fn(prev.items), updatedAt: Date.now() };
-        onSave(next);
-        return next;
-      });
+      const stamped = { ...next, updatedAt: Date.now() };
+      live.current = stamped;
+      setPage(stamped);
+      // Saving inside a state updater would run twice under StrictMode; the
+      // ref lets us keep `prev` correct without that.
+      if (save) onSave(stamped);
     },
     [onSave],
   );
 
+  const commit = useCallback(
+    (next: ScrapbookPage, remember = true) => apply(next, { remember }),
+    [apply],
+  );
+
+  const patchItems = useCallback(
+    (fn: (items: ScrapItem[]) => ScrapItem[], remember = true) =>
+      apply({ ...live.current, items: fn(live.current.items) }, { remember }),
+    [apply],
+  );
+
   /** Live update during a drag — no history entry, no save until release. */
-  const previewItems = useCallback((fn: (items: ScrapItem[]) => ScrapItem[]) => {
-    setPage((prev) => ({ ...prev, items: fn(prev.items) }));
-  }, []);
+  const previewItems = useCallback(
+    (fn: (items: ScrapItem[]) => ScrapItem[]) =>
+      apply({ ...live.current, items: fn(live.current.items) }, {
+        remember: false,
+        save: false,
+      }),
+    [apply],
+  );
 
   const flush = useCallback(() => {
-    setPage((prev) => {
-      onSave({ ...prev, updatedAt: Date.now() });
-      return prev;
-    });
+    onSave({ ...live.current, updatedAt: Date.now() });
   }, [onSave]);
 
   const undo = useCallback(() => {
     const prev = history.current.pop();
     if (!prev) return;
-    setPage((p) => {
-      const next = { ...p, items: prev, updatedAt: Date.now() };
-      onSave(next);
-      return next;
-    });
+    apply({ ...live.current, items: prev }, { remember: false });
     setSelected(null);
-  }, [onSave]);
+  }, [apply]);
 
-  const topZ = () => page.items.reduce((m, i) => Math.max(m, i.z), 0);
+  const topZ = () => live.current.items.reduce((m, i) => Math.max(m, i.z), 0);
 
   const addItem = (item: Omit<ScrapItem, 'id' | 'z'>) => {
     const full: ScrapItem = { ...item, id: uid('scr'), z: topZ() + 1 };
@@ -352,7 +365,7 @@ export function Scrapbook({
                 <Heading
                   value={page.heading}
                   ink={style.ink}
-                  onChange={(heading) => commit({ ...page, heading }, false)}
+                  onChange={(heading) => commit({ ...live.current, heading }, false)}
                 />
               )}
 
@@ -633,7 +646,7 @@ export function Scrapbook({
                     <Chip
                       key={s}
                       active={page.style === s}
-                      onClick={() => commit({ ...page, style: s })}
+                      onClick={() => commit({ ...live.current, style: s })}
                     >
                       {STYLES[s].label}
                     </Chip>
@@ -1164,6 +1177,3 @@ function Tool({
 function clamp01(v: number) {
   return v < 0 ? 0 : v > 1 ? 1 : v;
 }
-
-/** Kept for deterministic sticker jitter if we ever want it stable per id. */
-export const scrapJitter = (id: string, n: number) => hashN(id, n) - 0.5;
