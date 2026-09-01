@@ -200,12 +200,14 @@ twice gives you two universes rather than a silent overwrite.
 ## Deploying
 
 The app is a standard Next.js server with no hosting-specific dependencies, so
-it runs unchanged on Render or Vercel. No secrets are required.
+it runs unchanged on Render or Vercel. No secrets are required, and neither
+host's free tier asks for a payment method.
 
 ### Render (primary)
 
 `render.yaml` is a complete blueprint. Push the repo, then in Render:
-**New → Blueprint** → pick the repository → apply. That creates one web service:
+**New → Blueprint** → pick the repository → apply. That creates one free web
+service:
 
 - Build: `npm ci && npm run build`
 - Start: `npm run start` (binds `$PORT`)
@@ -222,15 +224,19 @@ Render terminates TLS for you, so the result is an HTTPS URL
 (`https://<name>.onrender.com`) you can hand to someone directly. A custom
 domain can be attached in the service's settings.
 
-> The `starter` plan does not sleep. On the free plan the service spins down when
-> idle and the first visit after that takes a few seconds — worth avoiding if
-> you are giving the link to someone as a present.
+> Free instances spin down after about fifteen minutes idle, so the first visit
+> after a quiet spell waits on a cold start — a poor first impression for a gift
+> link. Change `plan` to `starter` in `render.yaml` if the URL will get real use
+> (that instance type needs a card), or use Vercel below, which does not sleep.
 
 ### Vercel
 
 `vercel --prod`, or import the repo in the dashboard. Nothing to configure: no
 `vercel.json`, no adapter, no image-optimisation dependency (`images.unoptimized`
 is set so both hosts serve images identically).
+
+The Hobby plan is free, needs no card, and does not spin down — which makes it
+the better home for a link you are giving to someone.
 
 ### Environment variables
 
