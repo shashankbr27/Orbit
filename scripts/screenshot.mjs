@@ -23,7 +23,7 @@
  *   DISMISS     0 to keep the gift intro       (default 1)
  *   STEPS       comma-separated gestures, e.g.
  *               "tapcentre,wait3000,zoomin,pinch,aria:Settings,text:Open,
- *                press:0.5x0.5,drag:0.5x0.5>0.3x0.8,tap:0.6x0.9"
+ *                press:0.5x0.5,drag:0.5x0.5>0.3x0.8,tap:0.6x0.9,reload"
  *
  * Software rendering runs at a few frames a second, and the frame loop clamps
  * dt, so simulated time lags wall time — give WAIT generous values (and prefer
@@ -168,6 +168,9 @@ for (const step of STEPS.split(',').filter(Boolean)) {
       await new Promise((r) => setTimeout(r, 60));
     }
     await page.mouse.up();
+  } else if (step === 'reload') {
+    await page.reload({ waitUntil: 'networkidle2' });
+    await new Promise((r) => setTimeout(r, 9000));
   } else if (step.startsWith('tap:')) {
     const [fx, fy] = step.slice(4).split('x').map(Number);
     await page.mouse.click(W * fx, H * fy);
